@@ -1,8 +1,60 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model IEnumerable<UrlShortenerApp.Models.UrlEntry>
+
+@{
+    ViewData["Title"] = "Сокращатель ссылок";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-5">
+    <h2 class="mb-4">Сокращатель URL</h2>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <form asp-action="Create" method="post" class="mb-5">
+        <div class="input-group">
+            <input type="text" name="originalUrl" class="form-control" placeholder="Вставьте длинную ссылку сюда (https://...)" required>
+            <button class="btn btn-primary" type="submit">Сократить</button>
+        </div>
+    </form>
+
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Длинный URL</th>
+                <th>Сокращенный URL</th>
+                <th>Дата создания</th>
+                <th>Переходы</th>
+                <th>Управление</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td style="word-break: break-all; max-width: 300px;">
+                        <form asp-action="Edit" method="post" class="d-flex">
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <input type="text" name="newUrl" value="@item.OriginalUrl" class="form-control form-control-sm me-2" />
+                            <button type="submit" class="btn btn-sm btn-success">Save</button>
+                        </form>
+                    </td>
+                    <td>
+                        <a href="/@item.ShortCode" target="_blank">
+                            @Context.Request.Scheme://@Context.Request.Host/@item.ShortCode
+                        </a>
+                    </td>
+                    <td>@item.CreatedDate.ToString("g")</td>
+                    <td class="text-center">@item.ClickCount</td>
+                    <td>
+                        <form asp-action="Delete" method="post" onsubmit="return confirm('Удалить запись?');">
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>

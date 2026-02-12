@@ -1,32 +1,125 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using UrlShortenerApp.Data;
 using UrlShortenerApp.Models;
+using System.Security.Cryptography; // Для генерации случайных чисел
 
 namespace UrlShortenerApp.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private readonly ApplicationDbContext _context;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ApplicationDbContext context)
         {
-            _logger = logger;
+            _context = context;
         }
 
-        public IActionResult Index()
+ // 1. Главная страница со списком ссылок [cite: 11]
+        public async Task<IActionResult> Index()
         {
-            return View();
+            var urls = await _context.UrlEntries
+                                     .OrderByDescending(u => u.CreatedDate)
+                                     .ToListAsync();
+            return View(urls);
         }
 
-        public IActionResult Privacy()
+        // 2. Метод создания сокращенной ссылки
+        [HttpPost]
+        public async Task<IActionResult> Create(string originalUrl)
         {
-            return View();
+            if (string.IsNullOrWhiteSpace(originalUrl) || !Uri.IsWellFormedUriString(originalUrl, UriKind.Absolute))
+            {
+         // Простая валидация на сервере [cite: 8]
+                TempData["Error"] = "Пожалуйста, введите корректный URL (например, https://google.com)";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Генерируем уникальный код
+            string shortCode = GenerateRandomString(6);
+
+            // Проверяем на коллизии (маловероятно, но нужно для надежности)
+            while (await _context.UrlEntries.AnyAsync(u => u.ShortCode == shortCode))
+            {
+                shortCode = GenerateRandomString(6);
+            }
+
+            var entry = new UrlEntry
+            {
+                OriginalUrl = originalUrl,
+                ShortCode = shortCode,
+                CreatedDate = DateTime.Now
+            };
+
+            _context.Add(entry);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
         }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+ // 3. Редирект по короткой ссылке [cite: 9]
+        [HttpGet("/{code}")]
+        public async Task<IActionResult> RedirectToOriginal(string code)
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var entry = await _context.UrlEntries.FirstOrDefaultAsync(u => u.ShortCode == code);
+
+            if (entry == null)
+            {
+                return NotFound();
+            }
+
+            // Увеличиваем счетчик переходов
+            entry.ClickCount++;
+            await _context.SaveChangesAsync(); // Сохраняем изменение счетчика
+
+            return Redirect(entry.OriginalUrl);
+        }
+
+ // 4. Удаление ссылки [cite: 21]
+        [HttpPost]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var entry = await _context.UrlEntries.FindAsync(id);
+            if (entry != null)
+            {
+                _context.UrlEntries.Remove(entry);
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+ // 5. Редактирование ссылки [cite: 20]
+        [HttpPost]
+        public async Task<IActionResult> Edit(int id, string newUrl)
+        {
+            if (string.IsNullOrWhiteSpace(newUrl) || !Uri.IsWellFormedUriString(newUrl, UriKind.Absolute))
+            {
+                TempData["Error"] = "Некорректный новый URL";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var entry = await _context.UrlEntries.FindAsync(id);
+            if (entry != null)
+            {
+                entry.OriginalUrl = newUrl;
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+ // Вспомогательный метод для генерации "непредсказуемого" кода 
+        private string GenerateRandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            // RandomNumberGenerator используется для криптографической стойкости, 
+            // чтобы последовательность была действительно случайной, а не псевдослучайной.
+            return string.Create(length, chars, (span, charSet) =>
+            {
+                for (int i = 0; i < span.Length; i++)
+                {
+                    span[i] = charSet[RandomNumberGenerator.GetInt32(charSet.Length)];
+                }
+            });
         }
     }
 }
