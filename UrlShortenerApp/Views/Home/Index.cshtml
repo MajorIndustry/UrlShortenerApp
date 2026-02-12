@@ -41,12 +41,16 @@
                         </form>
                     </td>
                     <td>
-                        <a href="/@item.ShortCode" target="_blank">
+                        <a href="/@item.ShortCode" target="_blank" onclick="incrementCounter(@item.Id)">
                             @Context.Request.Scheme://@Context.Request.Host/@item.ShortCode
                         </a>
                     </td>
                     <td>@item.CreatedDate.ToString("g")</td>
-                    <td class="text-center">@item.ClickCount</td>
+
+                    <td class="text-center fw-bold" id="counter-@item.Id">
+                        @item.ClickCount
+                    </td>
+
                     <td>
                         <form asp-action="Delete" method="post" onsubmit="return confirm('Удалить запись?');">
                             <input type="hidden" name="id" value="@item.Id" />
@@ -58,3 +62,24 @@
         </tbody>
     </table>
 </div>
+
+<script>
+    function incrementCounter(id) {
+        // Находим элемент по ID (например, counter-5)
+        var counterElement = document.getElementById('counter-' + id);
+
+        if (counterElement) {
+            // Берем текущее число
+            var currentCount = parseInt(counterElement.innerText);
+
+            // Увеличиваем на 1 и обновляем текст
+            counterElement.innerText = currentCount + 1;
+
+            // Добавим небольшую анимацию цвета, чтобы было заметно
+            counterElement.style.color = "green";
+            setTimeout(() => {
+                counterElement.style.color = "";
+            }, 500);
+        }
+    }
+</script>
