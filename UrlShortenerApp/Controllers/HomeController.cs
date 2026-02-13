@@ -15,7 +15,7 @@ namespace UrlShortenerApp.Controllers
             _context = context;
         }
 
- // 1. Главная страница со списком ссылок [cite: 11]
+ // 1. Главная страница со списком ссылок
         public async Task<IActionResult> Index()
         {
             var urls = await _context.UrlEntries
@@ -57,7 +57,7 @@ namespace UrlShortenerApp.Controllers
             return RedirectToAction(nameof(Index));
         }
 
- // 3. Редирект по короткой ссылке [cite: 9]
+ // 3. Редирект по короткой ссылке
         [HttpGet("/{code}")]
         public async Task<IActionResult> RedirectToOriginal(string code)
         {
@@ -75,7 +75,7 @@ namespace UrlShortenerApp.Controllers
             return Redirect(entry.OriginalUrl);
         }
 
- // 4. Удаление ссылки [cite: 21]
+ // 4. Удаление ссылки 
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
         {
@@ -88,7 +88,7 @@ namespace UrlShortenerApp.Controllers
             return RedirectToAction(nameof(Index));
         }
 
- // 5. Редактирование ссылки [cite: 20]
+ // 5. Редактирование ссылки 
         [HttpPost]
         public async Task<IActionResult> Edit(int id, string newUrl)
         {
